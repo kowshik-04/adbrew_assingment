@@ -1,4 +1,4 @@
-# Adbrew Assignment — Full-Stack Todo Application
+# Adbrew Assignment - Full-Stack Todo Application
 
 A full-stack Todo application built as part of the **Adbrew Backend SDE Intern assignment**.  
 This project includes a Django backend, React frontend, MongoDB database, and Dockerized infrastructure.
