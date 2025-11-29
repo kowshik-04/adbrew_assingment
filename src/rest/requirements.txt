@@ -1,0 +1,8 @@
+Django
+djangorestframework
+pymongo
+django-cors-headers
+gunicorn
+whitenoise
+python-dotenv
+djangorestframework-simplejwt
