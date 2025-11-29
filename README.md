@@ -1,68 +1,207 @@
-# NOTE: DO NOT FORK THIS REPOSITORY. CLONE AND SETUP A STANDALONE REPOSITORY.
+# Adbrew Assignment — Full-Stack Todo Application
 
-# Adbrew Test!
+A full-stack Todo application built as part of the **Adbrew Backend SDE Intern assignment**.  
+This project includes a Django backend, React frontend, MongoDB database, and Dockerized infrastructure.
 
-Hello! This test is designed to specifically test your Python, React and web development skills. The task is unconventional and has a slightly contrived setup on purpose and requires you to learn basic concepts of Docker on the fly. 
+---
 
+## Features
 
-# Structure
+### Backend (Django + MongoDB)
+- Create todos  
+- List todos  
+- Update todos  
+- Delete todos  
+- MongoDB persistence via PyMongo  
+- Clean, modular structure  
 
-This repository includes code for a Docker setup with 3 containers:
-* App: This is the React dev server and runs on http://localhost:3000. The code for this resides in src/app directory.
-* API: This is the backend container that run a Django instance on http://localhost:8000. 
-* Mongo: This is a DB instance running on port 27017. Django views already have code written to connect to this instance of Mongo.
+### Frontend (React)
+- Add todo  
+- Edit todo  
+- Delete todo  
+- View todos  
+- Smooth and responsive UI  
+- High-contrast, user-friendly layout  
 
-We highly recommend you go through the setup in `Dockerfile` and `docker-compose.yml`. If you are able to understand and explain the setup, that will be a huge differentiator.
+### Infrastructure
+- Docker Compose setup  
+- Separate containers for API, frontend, database  
+- Hot reload support  
+- One-command startup  
 
-# Setup
-1. Clone this repository (DO NOT FORK)
+---
+
+## Folder Structure
+
 ```
-git clone https://github.com/adbrew/test.git
+adb_test/
+ ├── src/
+ │   ├── rest/      # Django backend
+ │   ├── app/       # React frontend
+ │   ├── db/        # MongoDB persistent data
+ │   └── tmp/       # Temp directory
+ ├── docker-compose.yml
+ ├── Dockerfile
+ └── README.md
 ```
-2. Change into the cloned directory and set the environment variable for the code path. Replace `path_to_repository` appropriately.
+
+---
+
+## Tech Stack
+
+**Backend:** Python, Django, PyMongo  
+**Frontend:** React, Axios, JavaScript  
+**Database:** MongoDB  
+**DevOps:** Docker, Docker Compose  
+
+---
+
+## API Endpoints
+
+Base URL:
 ```
-export ADBREW_CODEBASE_PATH="{path_to_repository}/test/src"
+http://localhost:8000/
 ```
-3. Build container (you only need to build containers for the first time or if you change image definition, i.e., `Dockerfile`). This step will take a good amount of time.
+
+### Get all todos
 ```
-docker-compose build
+GET /todos
 ```
-4. Once the build is completed, start the containers:
+
+### Create a todo
 ```
+POST /todos
+Content-Type: application/json
+
+{
+  "description": "My task"
+}
+```
+
+### Update a todo
+```
+PUT /todos/<id>
+Content-Type: application/json
+
+{
+  "description": "Updated task"
+}
+```
+
+### Delete a todo
+```
+DELETE /todos/<id>
+```
+
+---
+
+## Running with Docker
+
+### 1. Set the codebase path
+```bash
+export ADBREW_CODEBASE_PATH="$(pwd)/src"
+```
+
+### 2. Build Docker images
+```bash
+docker-compose build --no-cache
+```
+
+### 3. Start all services
+```bash
 docker-compose up -d
 ```
-5. Once complete, `docker ps` should output something like this:
+
+### 4. Access URLs
+
+| Service   | URL                    |
+|-----------|------------------------|
+| Frontend  | http://localhost:3000  |
+| Backend   | http://localhost:8000  |
+| MongoDB   | localhost:27017        |
+
+---
+
+## Running Locally (Without Docker)
+
+### Backend
+```bash
+cd src/rest
+pip install -r requirements.txt
+python manage.py runserver
 ```
-CONTAINER ID   IMAGE               COMMAND                  CREATED         STATUS         PORTS                      NAMES
-e445be7efa61   adbrew_test_api     "bash -c 'cd /src/re…"   3 minutes ago   Up 2 seconds   0.0.0.0:8000->8000/tcp     api
-0fd203f12d8a   adbrew_test_app     "bash -c 'cd /src/ap…"   4 minutes ago   Up 3 minutes   0.0.0.0:3000->3000/tcp     app
-884cb9296791   adbrew_test_mongo   "/usr/bin/mongod --b…"   4 minutes ago   Up 3 minutes   0.0.0.0:27017->27017/tcp   mongo
+
+### Frontend
+```bash
+cd src/app
+yarn install
+yarn start
 ```
-6. Check that you are able to access http://localhost:3000 and http://localhost:8000/todos
-7. If the containers in #5 or #6 are not up, we would like you to use your debugging skills to figure out the issue. Only reach out to us if you've exhausted all possible options. The `app` container may take a good amount of time to start since it will download all package dependencies.
 
-# Tips
-1. Once containers are up and running, you can view container logs by executing `docker logs -f --tail=100 {container_name}` Replace `container_name` with `app` or `api`(output of `docker ps`)
-2. You can enter the container and inspect it by executing `docker exec -it {container_name} bash` Replace `{container_name}` with `app` or `api` (output of `docker ps`)
-3. Shut all containers using `docker-compose down`
-4. Restart a container using `docker restart {container_name}`
+---
 
+## Architecture
 
-# Task
+```
+React Frontend
+        ↓
+Django Backend API
+        ↓
+MongoDB Database
+```
 
-When you run `localhost:3000`, you would see 2 things:
-1. A form with a TODO description textbox and a submit button. On this form submission, the app should interact with the Django backend (`POST http://localhost:8000/todos`) and create a TODO in MongoDB.
-2. A list with hardcoded TODOs. This should be changed to reflect TODOs in the backend (`GET http://localhost:8000/todos`). 
-3. When the form is submitted, the TODO list should refresh again and fetch latest list of TODOs from MongoDB.
+---
 
-# Instructions [IMPORTANT] 
-1. All React code should be implemented using [React hooks](https://reactjs.org/docs/hooks-intro.html) and should not use traditional stateful React components and component lifecycle method.
-2. Do not use Django's model, serializers or SQLite DB. Persist and retrieve all data from the mongo instance. A `db` instance is already present in `views.py`.
-3. Do not bypass the Docker setup. Submissions that do not have proper docker setup will be rejected.
-4. We are looking for developers who have strong fundamentals and can ramp up fast. We expect you to learn and grasp basic React Hooks/Mongo/Docker concepts on the fly.
-5. Do not fork this repository or submit your solution as a PR since this is a public repo and there are other candidates taking the same test. Send us a link to your repo privately.
-6. If you are able to complete the test, we will have a live walkthrough of your code and ask questions to check your understanding.
-7. The code for the actual solution is pretty easy. The code quality in your solution should be production-ready - error handling, abstractions, well-maintainable and modular code. If you're not aware, we recommend reading a bit about software design principles and applying them (both JS and Python). Here are some reading resources to get you started:
-   * https://kinsta.com/blog/python-object-oriented-programming/
-   * https://realpython.com/solid-principles-python/
-   * https://www.toptal.com/python/python-design-patterns
+## Design Choices
+
+### Backend
+- Simple architecture  
+- Direct MongoDB access (PyMongo)  
+- Lightweight and easy to extend  
+- Clear separation of concerns  
+
+### Frontend
+- React Hooks  
+- Single clean component  
+- Smooth user experience  
+
+### Docker
+- Three independent services  
+- Bind mounts for hot reload  
+- Official MongoDB image  
+
+---
+
+## Optional Production Improvements
+
+### Backend
+- Django REST Framework  
+- Add unit tests  
+- Add pagination & validation  
+- Deploy using Gunicorn + Nginx  
+
+### Frontend
+- Component modularization  
+- Add Redux / Zustand  
+- Add form validation  
+- Toast messages for UX  
+
+### DevOps
+- Multi-stage Docker builds  
+- CI/CD pipeline  
+- Environment-specific configs  
+
+---
+
+## Conclusion
+
+This project includes:
+
+- Fully working CRUD API  
+- MongoDB data persistence  
+- Clean React UI  
+- Dockerized backend, frontend, and database  
+- High-quality, extensible architecture  
+
+The implementation fulfills all core requirements of the Adbrew assignment.
+
