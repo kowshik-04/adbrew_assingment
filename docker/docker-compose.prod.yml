@@ -1,0 +1,56 @@
+# docker/docker-compose.prod.yml
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo:4.4
+    container_name: adbrew_mongo_prod
+    restart: always
+    volumes:
+      - adbrew_mongo_data:/data/db
+    networks:
+      - adbrew_net
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    image: adbrew_api:prod
+    container_name: adbrew_api_prod
+    env_file:
+      - ../.env.prod
+    depends_on:
+      - mongo
+    restart: always
+    ports:
+      - "8001:8000"
+    networks:
+      - adbrew_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    image: adbrew_app:prod
+    container_name: adbrew_app_prod
+    env_file:
+      - ../.env.prod
+    depends_on:
+      - api
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - adbrew_net
+
+volumes:
+  adbrew_mongo_data:
+
+networks:
+  adbrew_net:
+    driver: bridge

@@ -6,3 +6,4 @@ gunicorn
 whitenoise
 python-dotenv
 djangorestframework-simplejwt
+prometheus-client

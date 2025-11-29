@@ -1,0 +1,58 @@
+# docker/Dockerfile.api
+FROM python:3.10-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    POETRY_VIRTUALENVS_CREATE=false \
+    APPS_HOME=/app \
+    DJANGO_SETTINGS_MODULE=rest.settings \
+    PYTHONPATH=/app
+
+# system deps
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential gcc libpq-dev curl ca-certificates procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# create non-root user
+RUN useradd --create-home --shell /bin/bash appuser
+WORKDIR ${APPS_HOME}
+
+# copy only requirements first for cache efficiency
+COPY src/rest/requirements.txt ./requirements.txt
+
+# install python deps
+RUN python -m pip install --upgrade pip setuptools wheel \
+ && pip install -r requirements.txt
+
+# copy project
+COPY src /app
+
+# copy optional environment file into container (useful for simple deploys)
+# Docker build context is repo root so .env.prod at repo root will be available.
+# If you keep your env in a different location, adjust or remove this line.
+# WARNING: don't commit real secrets to repo.
+COPY .env.prod /app/.env.prod
+
+# copy entrypoint that waits for DB then runs collectstatic and the CMD
+COPY docker/entrypoint-api.sh /app/docker-entrypoint.sh
+RUN chown -R appuser:appuser /app \
+ && chmod +x /app/docker-entrypoint.sh
+
+# switch to non-root
+USER appuser
+
+EXPOSE 8000
+
+# Use entrypoint to wait for db and run collectstatic then exec CMD
+ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint.sh"]
+
+# default production command (Gunicorn)
+CMD ["gunicorn", "--chdir", "/app", "rest.wsgi:application", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "3", \
+     "--worker-class", "gthread", \
+     "--threads", "4", \
+     "--timeout", "30", \
+     "--log-level", "info", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]

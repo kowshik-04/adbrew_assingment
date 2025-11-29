@@ -2,7 +2,7 @@
 import os
 import json
 from datetime import datetime
-from django.http import JsonResponse, HttpResponseNotAllowed, HttpResponseBadRequest, HttpResponse
+from django.http import JsonResponse, HttpResponseNotAllowed, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 
 import pymongo
@@ -12,15 +12,20 @@ from pymongo.errors import ServerSelectionTimeoutError
 # Mongo connection (module-level client reused across requests)
 MONGO_HOST = os.environ.get("MONGO_HOST", "mongo")
 MONGO_PORT = int(os.environ.get("MONGO_PORT", 27017))
-MONGO_DBNAME = os.environ.get("MONGO_DBNAME", "adb_test_db")  # DB name - change if you use a different DB
+MONGO_DBNAME = os.environ.get("MONGO_DBNAME", "adb_test_db")  # DB name
 MONGO_COLLECTION = os.environ.get("MONGO_COLLECTION", "todos")
 
-# Create a client once. Use a short timeout so errors surface quickly.
 _client = None
 def get_client():
     global _client
     if _client is None:
-        _client = pymongo.MongoClient(host=MONGO_HOST, port=MONGO_PORT, serverSelectionTimeoutMS=2000)
+        _client = pymongo.MongoClient(
+            host=MONGO_HOST,
+            port=MONGO_PORT,
+            serverSelectionTimeoutMS=2000,
+            # reduce connection churn; tune if needed
+            maxPoolSize=50,
+        )
     return _client
 
 def get_collection():
@@ -32,13 +37,11 @@ def _doc_to_json(doc):
     if doc is None:
         return None
     out = dict(doc)
-    # Convert ObjectId to string
     _id = out.get("_id")
     try:
         out["_id"] = str(_id)
     except Exception:
         out["_id"] = _id
-    # ensure created_at is string
     ca = out.get("created_at")
     if isinstance(ca, datetime):
         out["created_at"] = ca.isoformat()
@@ -52,13 +55,11 @@ def todos(request):
     """
     col = get_collection()
     try:
-        # trigger server selection to raise early if mongo unavailable
         get_client().server_info()
     except ServerSelectionTimeoutError:
         return JsonResponse({"error": "mongo unavailable"}, status=503)
 
     if request.method == "GET":
-        # fetch all todos (return as list)
         cursor = col.find().sort("created_at", pymongo.DESCENDING)
         docs = [_doc_to_json(d) for d in cursor]
         return JsonResponse(docs, safe=False, status=200)
@@ -79,7 +80,6 @@ def todos(request):
             "completed": False
         }
         r = col.insert_one(doc)
-        # fetch created doc
         created = col.find_one({"_id": r.inserted_id})
         return JsonResponse(_doc_to_json(created), status=201)
 
@@ -98,9 +98,7 @@ def todo_detail(request, id):
     except ServerSelectionTimeoutError:
         return JsonResponse({"error": "mongo unavailable"}, status=503)
 
-    # helper: match either ObjectId (24 hex) or raw string
     def _build_id_query(key):
-        # If id looks like 24-hex-objectid, use ObjectId; else try raw string match
         try:
             if len(key) == 24:
                 return {"_id": ObjectId(key)}
@@ -108,7 +106,7 @@ def todo_detail(request, id):
             pass
         return {"_id": key}
 
-    if request.method == "PATCH" or request.method == "PUT":
+    if request.method in ("PATCH", "PUT"):
         try:
             payload = json.loads(request.body.decode("utf-8") or "{}")
         except Exception:
@@ -142,3 +140,19 @@ def todo_detail(request, id):
         return JsonResponse({"status": "deleted"}, status=200)
 
     return HttpResponseNotAllowed(["PATCH", "DELETE", "PUT"])
+
+
+# --------------------
+# Health endpoint
+# --------------------
+def healthz(request):
+    """
+    Basic health probe. Returns 200 when the app can ping the DB,
+    otherwise 503 with db_unavailable.
+    """
+    try:
+        client = get_client()
+        client.admin.command("ping")
+        return JsonResponse({"status": "ok"}, status=200)
+    except Exception:
+        return JsonResponse({"status": "db_unavailable"}, status=503)
