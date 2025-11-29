@@ -1,19 +1,12 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 
 /**
- * Todo Studio — full App.js
- * - Drop-in replacement for src/app/src/App.js
- * - High-contrast modal, Escape to close, accessible focus, improved visibility
- * - Backend expectations:
- *    GET  /todos
- *    POST /todos
- *    PATCH /todos/:id
- *    DELETE /todos/:id
+ * Todo Studio — full App.js (corrected)
  */
 
 const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8000";
 
-/* ---------- Icons ---------- */
+/* ---------- Icons (same as yours) ---------- */
 const Icon = {
   Plus: ({ size = 16 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -49,7 +42,7 @@ function formatDate(iso) {
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
 }
 
-/* ---------- Theme + Styles (visibility-focused) ---------- */
+/* ---------- Theme + Styles (same as yours) ---------- */
 const theme = {
   darkBg: "#071028",
   panelBg: "linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))",
@@ -87,7 +80,6 @@ const styles = {
 
   controls: { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", flex: 1 },
 
-  // Inputs & buttons
   input: { padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.03)", color: theme.textOnDark, outline: "none", fontSize: 14, minWidth: 260 },
   searchInput: { padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.04)", background: "rgba(255,255,255,0.02)", color: theme.mutedOnDark, outline: "none", fontSize: 14 },
 
@@ -98,7 +90,6 @@ const styles = {
     boxShadow: "0 10px 30px rgba(6,182,212,0.14)", fontWeight: 700, fontSize: 14, transition: "transform .14s ease, box-shadow .14s ease"
   },
 
-  // list
   list: { marginTop: 20, display: "grid", gap: 14 },
   card: {
     display: "flex", alignItems: "center", gap: 14, padding: 16,
@@ -124,15 +115,13 @@ const styles = {
   pagerBtn: { padding: "10px 14px", borderRadius: 10, border: "none", cursor: "pointer", background: "rgba(255,255,255,0.03)", color: theme.textOnDark },
   pagerInfo: { color: theme.mutedOnDark },
 
-  // toasts & modal
   toastArea: { position: "fixed", right: 20, bottom: 20, display: "flex", flexDirection: "column", gap: 10, zIndex: 9999 },
   toast: (type = "info") => ({ minWidth: 220, padding: "10px 14px", borderRadius: 10, color: "white", background: type === "error" ? "#ef4444" : "#10b981" }),
 
-  // improved modal styles for high contrast
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(2,6,23,0.48)",   // slightly lighter overlay to keep modal readable
+    background: "rgba(2,6,23,0.48)",
     display: "grid",
     placeItems: "center",
     zIndex: 9998,
@@ -141,18 +130,16 @@ const styles = {
   modal: {
     width: 460,
     maxWidth: "94%",
-    background: "#ffffff",              // bright white background
-    color: "#071122",                   // dark readable text
+    background: "#ffffff",
+    color: "#071122",
     padding: 22,
     borderRadius: 12,
     boxShadow: "0 30px 80px rgba(2,6,23,0.6)",
     lineHeight: 1.4
   },
 
-  // skeleton
   skeleton: { height: 64, borderRadius: 12, background: "linear-gradient(90deg, rgba(200,200,200,0.08), rgba(200,200,200,0.04))", animation: "pulse 1.2s infinite" },
 
-  // focus outline for accessibility
   focusOutline: { boxShadow: "0 0 0 4px rgba(124,58,237,0.18)" }
 };
 
@@ -207,9 +194,8 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [confirm]);
 
-  useEffect(() => { fetchTodos(); }, []);
-
-  async function fetchTodos() {
+  // stable fetchTodos
+  const fetchTodos = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/todos`);
@@ -222,7 +208,12 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [toasts]);
+
+  // initial load
+  useEffect(() => {
+    fetchTodos();
+  }, [fetchTodos]);
 
   // derived
   const filtered = todos.filter(t => t.description.toLowerCase().includes(q.toLowerCase()))
@@ -267,7 +258,7 @@ export default function App() {
     const prev = todos.slice();
     setTodos(t => t.map(x => x._id===id ? {...x, completed: !x.completed} : x));
     try {
-      const item = todos.find(x=>x._id===id) || {};
+      const item = prev.find(x=>x._id===id) || {};
       const res = await fetch(`${API_BASE}/todos/${id}`, {
         method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ completed: !item.completed })
       });
@@ -324,7 +315,7 @@ export default function App() {
     }
   }
 
-  /* ---------- Render ---------- */
+  /* ---------- Render (unchanged except small fixes) ---------- */
   return (
     <div style={styles.page}>
       <div style={styles.wrap}>
@@ -397,7 +388,7 @@ export default function App() {
                 aria-label={todo.completed ? "Mark as uncompleted" : "Mark as completed"}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e)=> { if (e.key === "Enter") onToggle(todo._1d); }}
+                onKeyDown={(e)=> { if (e.key === "Enter") onToggle(todo._id); }}
                 style={{
                   ...styles.checkbox,
                   background: todo.completed ? `linear-gradient(90deg, ${theme.accentA}, ${theme.accentB})` : "#fafbfd",
@@ -466,7 +457,7 @@ export default function App() {
       </div>
 
       {/* Toasts */}
-      <div style={{ position: "fixed", right: 20, bottom: 20, display: "flex", flexDirection: "column", gap: 10, zIndex: 9999 }}>
+      <div style={styles.toastArea}>
         {toasts.toasts?.map(t => (
           <div key={t.id} style={{ minWidth: 220, padding: "10px 14px", borderRadius: 10, color: "white", background: t.type === "error" ? "#ef4444" : "#10b981" }} onClick={()=>toasts.remove(t.id)}>{t.msg}</div>
         ))}
@@ -476,7 +467,6 @@ export default function App() {
       {confirm && (
         <div
           style={styles.modalOverlay}
-          // overlay captures clicks/keyboard. Escape handled globally in useEffect.
           onClick={(e) => { if (e.target === e.currentTarget) setConfirm(null); }}
         >
           <div role="dialog" aria-modal="true" aria-labelledby="confirm-title" style={styles.modal}>
